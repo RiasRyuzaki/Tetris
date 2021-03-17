@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Game : MonoBehaviour
 {
@@ -16,10 +17,63 @@ public class Game : MonoBehaviour
         SpawnNextBlock();
     }
 
-    // Update is called once per frame
-    void Update()
+    public bool CheckIsAboveGrid(Blocks block)
     {
-        
+        for (int x=0; x<gridWidth; ++x)
+        {
+            foreach (Transform bk in block.transform)
+            {
+                Vector2 pos = Round(bk.position);
+
+                if (pos.y > gridHeight -1)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public bool IsFullRowAt(int y)
+    {
+        for (int x=0; x<gridWidth; ++x) 
+        {
+            if (grid[x,y] == null)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void DeleteBlockAt(int y)
+    {
+        for (int x = 0; x<gridWidth; ++x)
+        {
+            Destroy(grid[x, y].gameObject);
+            grid[x, y] = null;
+        }
+    }
+
+    public void MoveRowDown(int y)
+    {
+        for (int x=0; x<gridWidth; ++x)
+        {
+            if(grid[x,y] != null)
+            {
+                grid[x, y - 1] = grid[x, y];
+                grid[x, y] = null;
+                grid[x, y - 1].position += new Vector3(0, -1, 0);
+            }
+        }
+    }
+
+    public void MoveAllRowDown(int y)
+    {
+        for (int i=y; i<gridHeight; ++i)
+        {
+            MoveRowDown(i);
+        }
     }
 
     public void UpdateGrid(Blocks block)
@@ -65,6 +119,19 @@ public class Game : MonoBehaviour
         GameObject nextBlock = (GameObject)Instantiate(Resources.Load(GetRandomBlock(), typeof(GameObject)), new Vector2(5.0f, 23.0f), Quaternion.identity);
     }
 
+    public void DeleteRow()
+    {
+        for (int y=0; y<gridHeight; ++y)
+        {
+            if (IsFullRowAt(y))
+            {
+                DeleteBlockAt(y);
+                MoveAllRowDown(y + 1);
+                --y;
+            }
+        }
+    }
+
     public bool CheckIsInsideGrid(Vector2 pos)
     {
         return ((int)pos.x >= 0 && (int)pos.x < gridWidth && (int)pos.y >= 0);
@@ -105,5 +172,10 @@ public class Game : MonoBehaviour
         }
         return randomBlockName;
         
+    }
+
+    public void GameOver()
+    {
+        SceneManager.LoadScene("GameOver");
     }
 }
