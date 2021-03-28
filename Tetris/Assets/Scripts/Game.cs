@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class Game : MonoBehaviour
 {
@@ -10,11 +11,147 @@ public class Game : MonoBehaviour
 
     public static Transform[,] grid = new Transform[gridWidth, gridHeight];
 
+    public int clearOneLine = 40;
+    public int clearTwoLine = 100;
+    public int clearThreeLine = 300;
+    public int clearFourLine = 1200;
+
+    public int currentLevel = 0;
+    private int numLinesCleared = 0;
+    public float fallSpeed = 1.0f;
+
+    public AudioClip clearedLineSound;
+
+    public Text hudScore;
+    public Text hudLevel;
+    public Text hudLines;
+
+    private int numberOfRowsThisTurn = 0;
+    private AudioSource audioSource;
+    public static int currentScore = 0;
+
+    private GameObject previewBlock;
+    private GameObject nextBlock;
+
+    private bool gameStarted = false;
+    private int startingHighScore;
+    private int startingHighScore2;
+    private int startingHighScore3;
+    private Vector2 previewBlockPosition = new Vector2(-6.5f, 20);
 
     // Start is called before the first frame update
     void Start()
     {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        currentScore = 0;
+        hudScore.text = "0";
+        hudLines.text = "0";
         SpawnNextBlock();
+        audioSource = GetComponent<AudioSource>();
+        startingHighScore = PlayerPrefs.GetInt("highscore");
+        startingHighScore2 = PlayerPrefs.GetInt("highscore2");
+        startingHighScore3 = PlayerPrefs.GetInt("highscore3");
+    }
+
+    void Update()
+    {
+        UpdateScore();
+        UpdateUI();
+        UpdateLevel();
+        UpdateSpeed();
+    }
+
+    void UpdateLevel()
+    {
+        currentLevel = numLinesCleared / 10;
+    }
+
+    void UpdateSpeed()
+    {
+        fallSpeed = 1.0f - ((float)currentLevel * 0.1f);
+    }
+
+    public void UpdateUI()
+    {
+        hudScore.text = currentScore.ToString();
+        hudLevel.text = currentLevel.ToString();
+        hudLines.text = numLinesCleared.ToString();
+    }
+
+    public void UpdateScore()
+    {
+        if (numberOfRowsThisTurn >0)
+        {
+            if (numberOfRowsThisTurn ==1)
+            {
+                ClearedOneLine();
+            }
+            else if (numberOfRowsThisTurn == 2)
+            {
+                ClearedTwoLine();
+            }
+            else if (numberOfRowsThisTurn == 3)
+            {
+                ClearedThreeLine();
+            }
+            else if (numberOfRowsThisTurn == 4)
+            {
+                ClearedFourLine();
+            }
+            numberOfRowsThisTurn = 0;
+            PlayLineClearedSound();
+
+        }
+        
+    }
+
+    public void ClearedOneLine()
+    {
+        currentScore += clearOneLine + (currentLevel *20);
+        numLinesCleared++;
+    }
+
+    public void ClearedTwoLine()
+    {
+        currentScore += clearTwoLine + (currentLevel *25);
+        numLinesCleared += 2;
+    }
+
+    public void ClearedThreeLine()
+    {
+        currentScore += clearThreeLine + (currentLevel *30);
+        numLinesCleared += 3;
+    }
+
+    public void ClearedFourLine()
+    {
+        currentScore += clearFourLine +(currentLevel *40);
+        numLinesCleared += 4;
+    }
+    
+    public void PlayLineClearedSound()
+    {
+        audioSource.PlayOneShot(clearedLineSound);
+    }
+
+    public void UpdateHighScore()
+    {
+        if (currentScore > startingHighScore)
+        {
+            PlayerPrefs.SetInt("highscore3", startingHighScore2);
+            PlayerPrefs.SetInt("highscore2", startingHighScore);
+            PlayerPrefs.SetInt("highscore", currentScore);
+        }
+        else if (currentScore > startingHighScore2)
+        {
+            PlayerPrefs.SetInt("highscore3", startingHighScore2);
+            PlayerPrefs.SetInt("highscore2", currentScore);
+        }
+        else if (currentScore > startingHighScore3)
+        {
+            PlayerPrefs.SetInt("highscore3", currentScore);
+        }
     }
 
     public bool CheckIsAboveGrid(Blocks block)
@@ -43,6 +180,7 @@ public class Game : MonoBehaviour
                 return false;
             }
         }
+        numberOfRowsThisTurn++;
         return true;
     }
 
@@ -116,7 +254,24 @@ public class Game : MonoBehaviour
 
     public void SpawnNextBlock()
     {
-        GameObject nextBlock = (GameObject)Instantiate(Resources.Load(GetRandomBlock(), typeof(GameObject)), new Vector2(5.0f, 23.0f), Quaternion.identity);
+        if (!gameStarted)
+        {
+            gameStarted = true;
+            nextBlock = (GameObject)Instantiate(Resources.Load(GetRandomBlock(), typeof(GameObject)), new Vector2(5.0f, 23.0f), Quaternion.identity);
+            previewBlock = (GameObject)Instantiate(Resources.Load(GetRandomBlock(), typeof(GameObject)), previewBlockPosition, Quaternion.identity);
+            previewBlock.GetComponent<Blocks>().enabled = false;
+
+        }
+        else
+        {
+            previewBlock.transform.localPosition = new Vector2(5.0f, 23.0f);
+            nextBlock = previewBlock;
+            nextBlock.GetComponent<Blocks>().enabled = true;
+
+            previewBlock = (GameObject)Instantiate(Resources.Load(GetRandomBlock(), typeof(GameObject)), previewBlockPosition, Quaternion.identity);
+            previewBlock.GetComponent<Blocks>().enabled = false;
+        }
+        
     }
 
     public void DeleteRow()
@@ -176,6 +331,9 @@ public class Game : MonoBehaviour
 
     public void GameOver()
     {
+        UpdateHighScore();
         SceneManager.LoadScene("GameOver");
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }
